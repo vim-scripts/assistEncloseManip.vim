@@ -390,7 +390,7 @@ nmap <A-'> :call DeleteInQuote(avoidList)<CR>
 let g:ListTotal = [g:ListBra,g:ListSha,g:ListCur,g:ListRec]
 nmap <A-]> :call DeleteInBraOnce(g:ListTotal)<CR>
 "
-"Drop in your .vim or vimfiles directory
+"Drop in your .vim/plugin or vimfiles/plugin
 "Feel free changing to your favorite key mapping.
 "Very humble but simple and easy to use
 
@@ -417,7 +417,7 @@ fun s:SetMapAutoEncapsManipNonLeader()
 	nmap [][ :call DeleteInBra(g:ListRec)<CR>
 	nmap :": :call DeleteInBra(g:ListDuo)<CR>
 	nmap ;'; :call DeleteInBra(g:ListSma)<CR>
-			
+		    
 	vmap ()( x:call DeleteInBra(g:ListBra)<CR>
 	vmap <>< x:call DeleteInBra(g:ListSha)<CR>
 	vmap {}{ x:call DeleteInBra(g:ListCur)<CR>
