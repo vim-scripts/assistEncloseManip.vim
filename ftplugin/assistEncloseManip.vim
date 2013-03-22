@@ -475,6 +475,18 @@ fun s:SetMapAutoEncapsManipUseLeader()
 	nmap <leader>;'' :call EraseEncaps(g:ListSma)<CR>
 endf
 
+fun SetForSnippets()
+	vmap <A-]><A-[> :call WordsSnippetsV()<CR>
+	nmap <A-]><A-[> :call WordsSnippets()<CR>
+endf
+fun SetForHTML()
+	vmap <A-]><A-[> :call WordsEmphasizeV()<CR>
+	nmap <A-]><A-[> :call WordsEmphasize()<CR>
+endf
+
+au BufNewFile,BufRead,Bufenter,BufReadPost *.html call SetForHTML()
+au BufNewFile,BufRead,Bufenter,BufReadPost *.snippets call SetForSnippets()
+
 if g:UseLeaderInAutoEncapsManip == 0
 	call s:SetMapAutoEncapsManipNonLeader()
 elseif g:UseLeaderInAutoEncapsManip == 1
