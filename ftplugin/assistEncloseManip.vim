@@ -1,23 +1,27 @@
-let g:UseLeaderInAutoEncapsManip = 0
+let g:ListForQuote    = ['.','!','~','h']	" char to include for quotes
+let g:ListForBracket  = ["'",'"','h','.']	" char to include for brackets
+let g:ListForSnippets = ['!','~'] 			" char to include for snippets
 
-let g:quoteMap            = ['.','!','~','h']
-let g:quoteMapForGeneral  = ["'",'"','h','.']
-let g:quoteMapForSnippets = ['!','~']
 
 let g:ListBra = [')','(']
 let g:ListSha = ['>','<']
 let g:ListCur = ['}','{']
 let g:ListRec = [']','[']
+
+" priority order : 		{...}	⊃   (...) 	 ⊃	  <...>   ⊃ 	[...] 
+" This order will be used in "blow out things at once in brackets" function (DeleteInBraOnce)
+let g:ListBraTotal = [g:ListCur,g:ListBra,g:ListSha,g:ListRec]
+
 let g:ListDuo = ['"','"']
 let g:ListSma = ["'","'"]
 
-fun DeleteInQuote(avoid)
+fun DeleteInQuoteOnce(avoid)
 	let avoid      = a:avoid
 	let avoid_cmp1 = [a:avoid[0],a:avoid[0]]
 	let avoid_cmp2 = [a:avoid[1],a:avoid[1]]
 
-	let safe1      = SafetyCheckIsOK(avoid_cmp1)
-	let safe2      = SafetyCheckIsOK(avoid_cmp2)
+	let safe1      = SafetyCheckIsOK(avoid_cmp1,'normal')
+	let safe2      = SafetyCheckIsOK(avoid_cmp2,'normal')
 
 	if safe1
 		let index = 0
@@ -50,61 +54,86 @@ fun DeleteInQuote(avoid)
 	endif
 endf
 
-
-fun DeleteInBra(avoid)
-	let avoid = a:avoid
-	if SafetyCheckIsOK(avoid)
-		while getline('.')[col('.')] != avoid[0]
-			normal x
-		endwhile
-		while getline('.')[col('.')-2] != avoid[1]
-			normal dh
-		endwhile
-		normal x
-	endif
-endf
-fun DeleteInBraDanger(avoid)
-	let avoid = a:avoid
-	while getline('.')[col('.')] != avoid[0]
-		normal x
-	endwhile
-	while getline('.')[col('.')-2] != avoid[1]
-		normal dh
-	endwhile
-	normal x
-endf
-
-
-
+"let g:ListBraTotal = [g:ListCur,g:ListBra,g:ListSha,g:ListRec]
+" {} () <> []
 fun DeleteInBraOnce(avoid)
 	let avoid = a:avoid
-	let safe1 = SafetyCheckIsOK(avoid[0])
-	let safe2 = SafetyCheckIsOK(avoid[1])
-	let safe3 = SafetyCheckIsOK(avoid[2])
-	let safe4 = SafetyCheckIsOK(avoid[3])
+	let safe1 = SafetyCheckIsOK(avoid[0],'normal') " ()
+	let safe2 = SafetyCheckIsOK(avoid[1],'normal') " <>
+	let safe3 = SafetyCheckIsOK(avoid[2],'normal') " {}
+	let safe4 = SafetyCheckIsOK(avoid[3],'normal') " []
 
-	if safe1 + safe2 + safe3 + safe4 > 0
-		while (   getline ('.')[col('.')]     != avoid[0][0] &&
-		\         getline ('.')[col('.')]     != avoid[1][0] &&
-		\         getline ('.')[col('.')]     != avoid[2][0] &&
-		\         getline ('.')[col('.')]     != avoid[3][0] )
+	if safe1
+
+		" to the right
+		while ( getline ('.')[col('.')]     != avoid[0][0] )
 			normal x
 		endwhile
-		while (
-		\         getline ('.')[col('.') -2 ] != avoid[0][1] &&
-		\         getline ('.')[col('.') -2 ] != avoid[1][1] &&
-		\         getline ('.')[col('.') -2 ] != avoid[2][1] &&
-		\         getline ('.')[col('.') -2 ] != avoid[3][1] )
+
+		" to the left
+		while ( getline ('.')[col('.') -2 ] != avoid[0][1] )
 			normal dh
 		endwhile
+
 		normal x
+
+	elseif safe2
+		" to the right
+		while ( getline ('.')[col('.')]     != avoid[1][0] )
+			normal x
+		endwhile
+
+		" to the left
+		while ( getline ('.')[col('.') -2 ] != avoid[1][1] )
+			normal dh
+		endwhile
+
+		normal x
+	elseif safe3
+		" to the right
+		while ( getline ('.')[col('.')]     != avoid[2][0] )
+			normal x
+		endwhile
+
+		" to the left
+		while ( getline ('.')[col('.') -2 ] != avoid[2][1] )
+			normal dh
+		endwhile
+
+		normal x
+	elseif safe4
+
+		" to the right
+		while ( getline ('.')[col('.')]     != avoid[3][0] )
+			normal x
+		endwhile
+
+		" to the left
+		while ( getline ('.')[col('.') -2 ] != avoid[3][1] )
+			normal dh
+		endwhile
+
+		normal x
+
 	else
+
 		echo 'Not proper place!'
 	endif
 endf
 
+fun DeleteContents(avoid,mode) range
+	if SafetyCheckIsOK(a:avoid,a:mode)
+		while getline('.')[col('.')] != a:avoid[0]
+			normal x
+		endwhile
+		while getline('.')[col('.')-2] != a:avoid[1]
+			normal dh
+		endwhile
+		normal x
+	endif
+endf
 
-fun SafetyCheckIsOK(arg)
+fun SafetyCheckIsOK(arg,mode)
 
 	let bang            = a:arg
 	let left_bang       = bang[1]
@@ -115,7 +144,13 @@ fun SafetyCheckIsOK(arg)
 	let current_line    = getline('.')
 	let current_col_ref = col('.') - 1
 
-	let col_left        = current_col_ref
+	if a:mode is 'visual'
+		let col_left        = col("'<")+2 " include quotes or brackets
+		let col_right       = col("'>")-3 " (+)consider $ character
+	elseif a:mode is 'normal'
+		let col_left        = current_col_ref
+		let col_right       = current_col_ref
+	endif
 
 	let same_bang = (left_bang == right_bang)
 
@@ -143,7 +178,6 @@ fun SafetyCheckIsOK(arg)
 		endif
 	endwhile
 
-	let col_right       = current_col_ref
 	while !right_bounded
 		if col_right> col("$") - 1
 			break
@@ -171,8 +205,7 @@ fun SafetyCheckIsOK(arg)
 	return right_bounded * left_bounded
 endf
 
-
-fun EraseEncaps(arg)
+fun EraseEncaps(arg,mode) range
 	let sav_pos          = getpos('.')
 	let line_text        = getline('.')
 	let line_num         = line('.')
@@ -184,14 +217,20 @@ fun EraseEncaps(arg)
 	let col_end          = col('$')-1
 	let col_start        = col('^')+1
 
-	if SafetyCheckIsOK(a:arg)
+	if a:mode is 'visual'
+		let col_to_right     = col("'>")-1
+		let col_to_left      = col("'<")+1
+	elseif a:mode is 'normal'
 		let col_to_right = current_col_ref
+		let col_to_left = current_col_ref
+	endif
+
+	if SafetyCheckIsOK(a:arg,a:mode)
 		while line_text[col_to_right] != right_bang && col_to_right < col_end 
 			let col_to_right = col_to_right +1
 		endwhile
 		let right_remove_col = col_to_right +1
 
-		let col_to_left = current_col_ref
 		while line_text[col_to_left] != left_bang && col_to_left > col_start
 			let col_to_left = col_to_left -1
 		endwhile
@@ -203,7 +242,12 @@ fun EraseEncaps(arg)
 
 		call setpos('.',[0,line_num,right_remove_col,0])
 		normal x
-		call setpos('.',[0,line_num,left_remove_col,0])
+
+		if line_text["'^"] is "\<tab>" && line_text["'^"+1]  != "\<tab>"
+			call setpos('.',[0,line_num,left_remove_col+1,0])
+		else
+			call setpos('.',[0,line_num,left_remove_col,0])
+		endif
 		normal x
 	else
 		echo "Can't erase outer encaps."
@@ -256,13 +300,18 @@ fun WordsEncapsN(encapsList,includeMap)
 	call setpos('.',pos)
 endf
 fun WordsEncapsV(encapslist,includeMap) range
-
 	let left_encaps  = a:encapslist[1]
 	let right_encaps = a:encapslist[0]
 	let include		 = a:includeMap
 
 	call cursor(line("'<"),col("'<"))
-	normal wb
+	if col("'<")==1
+		if getline('.')[0] == ' ' || getline('.')[0] == "\<TAB>"
+			normal w
+		endif
+	else
+	   	normal wb
+	endif
 	let existsInclude = SearchBackSpot(include)
 
 	exe "normal i" . left_encaps
@@ -270,7 +319,9 @@ fun WordsEncapsV(encapslist,includeMap) range
 	call cursor(line("'>"),col("'>"))
 
 	if !existsInclude
-		normal e
+        if col("'>") < col('$')
+            normal e
+        endif
 	else
 		normal le
 	endif
@@ -283,26 +334,26 @@ endf
 
 
 fun SearchNextSpot(toInclude) 
-	let quoteMap = a:toInclude
+	let ListForQuote = a:toInclude
 	let spot = getline('.')[col('.')]
 	let gotit = 0
-	for si in quoteMap
+	for si in ListForQuote
 		if spot is si
 			normal l
-			call SearchNextSpot(quoteMap)
+			call SearchNextSpot(ListForQuote)
 			let gotit = 1
 		endif
 	endfor
 	return gotit
 endf
 fun SearchBackSpot(toInclude) 
-	let quoteMap = a:toInclude
+	let ListForQuote = a:toInclude
 	let spot = getline('.')[col('.')-2]
 	let gotit = 0
-	for si in quoteMap
+	for si in ListForQuote
 		if spot is si && col('.') != 1
 			normal h
-			call SearchBackSpot(quoteMap)
+			call SearchBackSpot(ListForQuote)
 			let gotit = 1
 		endif
 	endfor
@@ -326,13 +377,13 @@ endf
 fun WordsEmphasizeV() range
 	call cursor(line("'<"),col("'<"))
 	normal wb
-	call SearchBackSpot(g:quoteMapForSnippets)
+	call SearchBackSpot(g:ListForSnippets)
 	normal i<em>
 
 	call cursor(line("'>"),col("'>"))
 	normal e
 
-	call SearchNextSpot(g:quoteMapForSnippets)
+	call SearchNextSpot(g:ListForSnippets)
 	normal a</em>
 
 	call cursor(line("'<"),col("'<"))
@@ -342,13 +393,13 @@ fun WordsEmphasize()
 	let pos = getpos('.')
 	normal e
 
-	call SearchNextSpot(g:quoteMapForSnippets)
+	call SearchNextSpot(g:ListForSnippets)
 	normal a</em>
 
 	call setpos('.',pos)
 
 	normal wb
-	call SearchBackSpot(g:quoteMapForSnippets)
+	call SearchBackSpot(g:ListForSnippets)
 	normal i<em>
 
 	call setpos('.',pos)
@@ -359,13 +410,13 @@ fun WordsSnippetsV() range
 	call cursor(line("'>"),col("'>")-1)
 	normal e
 
-	call SearchNextSpot(g:quoteMapForSnippets)
+	call SearchNextSpot(g:ListForSnippets)
 	normal a}
 
 	call cursor(line("'<"),col("'<")+1)
 	normal b
 
-	call SearchBackSpot(g:quoteMapForSnippets)
+	call SearchBackSpot(g:ListForSnippets)
 	normal i${1:
 	normal h
 	" call cursor(line("'<"),col("'<"))
@@ -373,107 +424,66 @@ endf
 fun WordsSnippets()
 	let pos = getpos('.')
 	normal e
-	call SearchNextSpot(g:quoteMapForSnippets)
+	call SearchNextSpot(g:ListForSnippets)
 	normal a}
 
 	call setpos('.',pos)
 	normal wb
-	call SearchBackSpot(g:quoteMapForSnippets)
+	call SearchBackSpot(g:ListForSnippets)
 	normal i${1:
 	normal h
 endf
 
 let avoidList = ["'",'"']
-nmap <A-'> :call DeleteInQuote(avoidList)<CR>
+nmap <A-'> :call DeleteInQuoteOnce(avoidList)<CR>
 
 
-let g:ListTotal = [g:ListBra,g:ListSha,g:ListCur,g:ListRec]
-nmap <A-]> :call DeleteInBraOnce(g:ListTotal)<CR>
-"
-"Drop in your .vim/plugin or vimfiles/plugin
-"Feel free changing to your favorite key mapping.
-"Very humble but simple and easy to use
+nmap <A-]> :call DeleteInBraOnce(g:ListBraTotal)<CR>
 
-fun s:SetMapAutoEncapsManipNonLeader()
-	" 1. "Make encaps."
-	nmap )( :call WordsEncapsN(g:ListBra,g:quoteMapForGeneral)<CR>
-	nmap >< :call WordsEncapsN(g:ListSha,g:quoteMapForGeneral)<CR>
-	nmap ][ :call WordsEncapsN(g:ListRec,g:quoteMapForGeneral)<CR>
-	nmap }{ :call WordsEncapsN(g:ListCur,g:quoteMapForSnippets)<CR>
-	nmap '; :call WordsEncapsN(g:ListSma,g:quoteMap)<CR>
-	nmap ": :call WordsEncapsN(g:ListDuo,g:quoteMap)<CR>
+" 1. "Make encaps."
+nmap `)( :call WordsEncapsN(g:ListBra,g:ListForBracket)<CR>
+nmap `>< :call WordsEncapsN(g:ListSha,g:ListForBracket)<CR>
+nmap `][ :call WordsEncapsN(g:ListRec,g:ListForBracket)<CR>
+nmap `}{ :call WordsEncapsN(g:ListCur,g:ListForBracket)<CR>
+nmap `'; :call WordsEncapsN(g:ListSma,g:ListForQuote)<CR>
+nmap `": :call WordsEncapsN(g:ListDuo,g:ListForQuote)<CR>
+             
+vmap `)( :call WordsEncapsV(g:ListBra,g:ListForBracket)<CR>
+vmap `>< :call WordsEncapsV(g:ListSha,g:ListForBracket)<CR>
+vmap `][ :call WordsEncapsV(g:ListRec,g:ListForBracket)<CR>
+vmap `}{ :call WordsEncapsV(g:ListCur,g:ListForBracket)<CR>
+vmap `'; :call WordsEncapsV(g:ListSma,g:ListForQuote)<CR>
+vmap `": :call WordsEncapsV(g:ListDuo,g:ListForQuote)<CR>
 
-	vmap )( :call WordsEncapsV(g:ListBra,g:quoteMapForGeneral)<CR>
-	vmap >< :call WordsEncapsV(g:ListSha,g:quoteMapForGeneral)<CR>
-	vmap ][ :call WordsEncapsV(g:ListRec,g:quoteMapForGeneral)<CR>
-	vmap }{ :call WordsEncapsV(g:ListCur,g:quoteMapForSnippets)<CR>
-	vmap '; :call WordsEncapsV(g:ListSma,g:quoteMap)<CR>
-	vmap ": :call WordsEncapsV(g:ListDuo,g:quoteMap)<CR>
+" 2. "Delete contents in encaps."
+nmap `(( :call DeleteContents(g:ListBra,'normal')<CR>
+nmap `<< :call DeleteContents(g:ListSha,'normal')<CR>
+nmap `{{ :call DeleteContents(g:ListCur,'normal')<CR>
+nmap `[[ :call DeleteContents(g:ListRec,'normal')<CR>
+nmap `:: :call DeleteContents(g:ListDuo,'normal')<CR>
+nmap `;; :call DeleteContents(g:ListSma,'normal')<CR>
 
-	" 2. "Delete contents in encaps."
-	nmap ()( :call DeleteInBra(g:ListBra)<CR>
-	nmap <>< :call DeleteInBra(g:ListSha)<CR>
-	nmap {}{ :call DeleteInBra(g:ListCur)<CR>
-	nmap [][ :call DeleteInBra(g:ListRec)<CR>
-	nmap :": :call DeleteInBra(g:ListDuo)<CR>
-	nmap ;'; :call DeleteInBra(g:ListSma)<CR>
-		    
-	vmap ()( x:call DeleteInBra(g:ListBra)<CR>
-	vmap <>< x:call DeleteInBra(g:ListSha)<CR>
-	vmap {}{ x:call DeleteInBra(g:ListCur)<CR>
-	vmap [][ x:call DeleteInBra(g:ListRec)<CR>
-	vmap :": x:call DeleteInBra(g:ListDuo)<CR>
-	vmap ;'; x:call DeleteInBra(g:ListSma)<CR>
+vmap `(( x:call DeleteContents(g:ListBra,'visual')<CR>
+vmap `<< x:call DeleteContents(g:ListSha,'visual')<CR>
+vmap `{{ x:call DeleteContents(g:ListCur,'visual')<CR>
+vmap `[[ x:call DeleteContents(g:ListRec,'visual')<CR>
+vmap `:: x:call DeleteContents(g:ListDuo,'visual')<CR>
+vmap `;; x:call DeleteContents(g:ListSma,'visual')<CR>
 
-	" {3}. "Remove encaps leaving contents intact."
-	nmap ()) :call EraseEncaps(g:ListBra)<CR>
-	nmap <>> :call EraseEncaps(g:ListSha)<CR>
-	nmap {}} :call EraseEncaps(g:ListCur)<CR>
-	nmap []] :call EraseEncaps(g:ListRec)<CR>
-	nmap :"" :call EraseEncaps(g:ListDuo)<CR>
-	nmap ;'' :call EraseEncaps(g:ListSma)<CR>
-endf
-
-fun s:SetMapAutoEncapsManipUseLeader()
-	" 1. "Make encaps."
-	nmap <leader>)( :call WordsEncapsN(g:ListBra,g:quoteMapForGeneral)<CR>
-	vmap <leader>)( :call WordsEncapsV(g:ListBra,g:quoteMapForGeneral)<CR>
-	nmap <leader>>< :call WordsEncapsN(g:ListSha,g:quoteMapForGeneral)<CR>
-	vmap <leader>>< :call WordsEncapsV(g:ListSha,g:quoteMapForGeneral)<CR>
-	nmap <leader>][ :call WordsEncapsN(g:ListRec,g:quoteMapForGeneral)<CR>
-	vmap <leader>][ :call WordsEncapsV(g:ListRec,g:quoteMapForGeneral)<CR>
-	nmap <leader>}{ :call WordsEncapsN(g:ListCur,g:quoteMapForSnippets)<CR>
-	vmap <leader>}{ :call WordsEncapsV(g:ListCur,g:quoteMapForSnippets)<CR>
-
-
-	vmap <leader>'; :call WordsEncapsV(g:ListSma,g:quoteMap)<CR>
-	nmap <leader>'; :call WordsEncapsN(g:ListSma,g:quoteMap)<CR>
-
-	vmap <leader>": :call WordsEncapsV(g:ListDuo,g:quoteMap)<CR>
-	nmap <leader>": :call WordsEncapsN(g:ListDuo,g:quoteMap)<CR>
-
-	" 2. "Delete contents in encaps."
-	nmap <leader>()( :call DeleteInBra(g:ListBra)<CR>
-	nmap <leader><>< :call DeleteInBra(g:ListSha)<CR>
-	nmap <leader>{}{ :call DeleteInBra(g:ListCur)<CR>
-	nmap <leader>[][ :call DeleteInBra(g:ListRec)<CR>
-	nmap <leader>:": :call DeleteInBra(g:ListDuo)<CR>
-	nmap <leader>;'; :call DeleteInBra(g:ListSma)<CR>
-	vmap <leader>()( x:call DeleteInBra(g:ListBra)<CR>
-	vmap <leader><>< x:call DeleteInBra(g:ListSha)<CR>
-	vmap <leader>{}{ x:call DeleteInBra(g:ListCur)<CR>
-	vmap <leader>[][ x:call DeleteInBra(g:ListRec)<CR>
-	vmap <leader>:": x:call DeleteInBra(g:ListDuo)<CR>
-	vmap <leader>;'; x:call DeleteInBra(g:ListSma)<CR>
-
-	" {3}. "Remove encaps leaving contents intact."
-	nmap <leader>()) :call EraseEncaps(g:ListBra)<CR>
-	nmap <leader><>> :call EraseEncaps(g:ListSha)<CR>
-	nmap <leader>{}} :call EraseEncaps(g:ListCur)<CR>
-	nmap <leader>[]] :call EraseEncaps(g:ListRec)<CR>
-	nmap <leader>:"" :call EraseEncaps(g:ListDuo)<CR>
-	nmap <leader>;'' :call EraseEncaps(g:ListSma)<CR>
-endf
+" {3}. "Remove encaps leaving contents intact."
+nmap `)) :call EraseEncaps(g:ListBra,'normal')<CR>
+nmap `>> :call EraseEncaps(g:ListSha,'normal')<CR>
+nmap `}} :call EraseEncaps(g:ListCur,'normal')<CR>
+nmap `]] :call EraseEncaps(g:ListRec,'normal')<CR>
+nmap `"" :call EraseEncaps(g:ListDuo,'normal')<CR>
+nmap `'' :call EraseEncaps(g:ListSma,'normal')<CR>
+       
+vmap `)) :call EraseEncaps(g:ListBra,'visual')<CR>
+vmap `>> :call EraseEncaps(g:ListSha,'visual')<CR>
+vmap `}} :call EraseEncaps(g:ListCur,'visual')<CR>
+vmap `]] :call EraseEncaps(g:ListRec,'visual')<CR>
+vmap `"" :call EraseEncaps(g:ListDuo,'visual')<CR>
+vmap `'' :call EraseEncaps(g:ListSma,'visual')<CR>
 
 fun SetForSnippets()
 	vmap <A-]><A-[> :call WordsSnippetsV()<CR>
@@ -487,9 +497,5 @@ endf
 au BufNewFile,BufRead,Bufenter,BufReadPost *.html call SetForHTML()
 au BufNewFile,BufRead,Bufenter,BufReadPost *.snippets call SetForSnippets()
 
-if g:UseLeaderInAutoEncapsManip == 0
-	call s:SetMapAutoEncapsManipNonLeader()
-elseif g:UseLeaderInAutoEncapsManip == 1
-	call s:SetMapAutoEncapsManipUseLeader()
-endif
-
+"Drop in your .vim/plugin or vimfiles/plugin
+"Feel free changing to your favorite key mapping.
