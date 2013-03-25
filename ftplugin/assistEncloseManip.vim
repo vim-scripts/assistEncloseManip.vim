@@ -208,46 +208,42 @@ endf
 fun EraseEncaps(arg,mode) range
 	let sav_pos          = getpos('.')
 	let line_text        = getline('.')
-	let line_num         = line('.')
-	let current_col_ref  = col('.')-1
+	let current_col_ref  = col('.')
 	let left_bang        = a:arg[1]
 	let right_bang       = a:arg[0]
-	let right_remove_col = -1
-	let left_remove_col  = -1
 	let col_end          = col('$')-1
 	let col_start        = col('^')+1
 
 	if a:mode is 'visual'
-		let col_to_right     = col("'>")-1
-		let col_to_left      = col("'<")+1
+		let col_to_right = col("'>")-1
+		let col_to_left  = col("'<")+1
 	elseif a:mode is 'normal'
 		let col_to_right = current_col_ref
-		let col_to_left = current_col_ref
+		let col_to_left  = current_col_ref
 	endif
 
 	if SafetyCheckIsOK(a:arg,a:mode)
-		while line_text[col_to_right] != right_bang && col_to_right < col_end 
-			let col_to_right = col_to_right +1
-		endwhile
-		let right_remove_col = col_to_right +1
 
-		while line_text[col_to_left] != left_bang && col_to_left > col_start
-			let col_to_left = col_to_left -1
-		endwhile
-		if col_to_left > 1
-			let left_remove_col = col_to_left +1
-		else
-			let left_remove_col = col_to_left
+		if a:mode is 'visual'
+			call cursor(line("'>"),col("'>"))
+		elseif a:mode is 'normal'
+			call setpos('.',sav_pos)
 		endif
 
-		call setpos('.',[0,line_num,right_remove_col,0])
+		while line_text[col('.')-1] != right_bang && col_to_right < col_end 
+			normal l
+		endwhile
 		normal x
 
-		if line_text["'^"] is "\<tab>" && line_text["'^"+1]  != "\<tab>"
-			call setpos('.',[0,line_num,left_remove_col+1,0])
-		else
-			call setpos('.',[0,line_num,left_remove_col,0])
+		if a:mode is 'visual'
+			call cursor(line("'<"),col("'<"))
+		elseif a:mode is 'normal'
+			call setpos('.',sav_pos)
 		endif
+
+		while line_text[col('.')-1] != left_bang && col_to_left > col_start
+			normal h
+		endwhile
 		normal x
 	else
 		echo "Can't erase outer encaps."
@@ -434,56 +430,62 @@ fun WordsSnippets()
 	normal h
 endf
 
+
+" 0. "blow out all contents"
 let avoidList = ["'",'"']
-nmap <A-'> :call DeleteInQuoteOnce(avoidList)<CR>
+nmap <A-;><A-'> :call DeleteInQuoteOnce(avoidList)<CR>
 
 
-nmap <A-]> :call DeleteInBraOnce(g:ListBraTotal)<CR>
+nmap <A-[><A-]> :call DeleteInBraOnce(g:ListBraTotal)<CR>
+
+
 
 " 1. "Make encaps."
-nmap `)( :call WordsEncapsN(g:ListBra,g:ListForBracket)<CR>
-nmap `>< :call WordsEncapsN(g:ListSha,g:ListForBracket)<CR>
-nmap `][ :call WordsEncapsN(g:ListRec,g:ListForBracket)<CR>
-nmap `}{ :call WordsEncapsN(g:ListCur,g:ListForBracket)<CR>
-nmap `'; :call WordsEncapsN(g:ListSma,g:ListForQuote)<CR>
-nmap `": :call WordsEncapsN(g:ListDuo,g:ListForQuote)<CR>
+nmap <A-)><A-(> :call WordsEncapsN(g:ListBra,g:ListForBracket)<CR>
+nmap <A->><A-<> :call WordsEncapsN(g:ListSha,g:ListForBracket)<CR>
+nmap <A-]><A-[> :call WordsEncapsN(g:ListRec,g:ListForBracket)<CR>
+nmap <A-}><A-{> :call WordsEncapsN(g:ListCur,g:ListForBracket)<CR>
+nmap <A-'><A-;> :call WordsEncapsN(g:ListSma,g:ListForQuote)<CR>
+nmap <A-"><A-:> :call WordsEncapsN(g:ListDuo,g:ListForQuote)<CR>
              
-vmap `)( :call WordsEncapsV(g:ListBra,g:ListForBracket)<CR>
-vmap `>< :call WordsEncapsV(g:ListSha,g:ListForBracket)<CR>
-vmap `][ :call WordsEncapsV(g:ListRec,g:ListForBracket)<CR>
-vmap `}{ :call WordsEncapsV(g:ListCur,g:ListForBracket)<CR>
-vmap `'; :call WordsEncapsV(g:ListSma,g:ListForQuote)<CR>
-vmap `": :call WordsEncapsV(g:ListDuo,g:ListForQuote)<CR>
+vmap <A-)><A-(> :call WordsEncapsV(g:ListBra,g:ListForBracket)<CR>
+vmap <A->><A-<> :call WordsEncapsV(g:ListSha,g:ListForBracket)<CR>
+vmap <A-]><A-[> :call WordsEncapsV(g:ListRec,g:ListForBracket)<CR>
+vmap <A-}><A-{> :call WordsEncapsV(g:ListCur,g:ListForBracket)<CR>
+vmap <A-'><A-;> :call WordsEncapsV(g:ListSma,g:ListForQuote)<CR>
+vmap <A-"><A-:> :call WordsEncapsV(g:ListDuo,g:ListForQuote)<CR>
 
 " 2. "Delete contents in encaps."
-nmap `(( :call DeleteContents(g:ListBra,'normal')<CR>
-nmap `<< :call DeleteContents(g:ListSha,'normal')<CR>
-nmap `{{ :call DeleteContents(g:ListCur,'normal')<CR>
-nmap `[[ :call DeleteContents(g:ListRec,'normal')<CR>
-nmap `:: :call DeleteContents(g:ListDuo,'normal')<CR>
-nmap `;; :call DeleteContents(g:ListSma,'normal')<CR>
+nmap <A-(><A-(> :call DeleteContents(g:ListBra,'normal')<CR>
+nmap <A-<><A-<> :call DeleteContents(g:ListSha,'normal')<CR>
+nmap <A-{><A-{> :call DeleteContents(g:ListCur,'normal')<CR>
+nmap <A-[><A-[> :call DeleteContents(g:ListRec,'normal')<CR>
+nmap <A-:><A-:> :call DeleteContents(g:ListDuo,'normal')<CR>
+nmap <A-;><A-;> :call DeleteContents(g:ListSma,'normal')<CR>
 
-vmap `(( x:call DeleteContents(g:ListBra,'visual')<CR>
-vmap `<< x:call DeleteContents(g:ListSha,'visual')<CR>
-vmap `{{ x:call DeleteContents(g:ListCur,'visual')<CR>
-vmap `[[ x:call DeleteContents(g:ListRec,'visual')<CR>
-vmap `:: x:call DeleteContents(g:ListDuo,'visual')<CR>
-vmap `;; x:call DeleteContents(g:ListSma,'visual')<CR>
+vmap <A-(><A-(> x:call DeleteContents(g:ListBra,'visual')<CR>
+vmap <A-<><A-<> x:call DeleteContents(g:ListSha,'visual')<CR>
+vmap <A-{><A-{> x:call DeleteContents(g:ListCur,'visual')<CR>
+vmap <A-[><A-[> x:call DeleteContents(g:ListRec,'visual')<CR>
+vmap <A-:><A-:> x:call DeleteContents(g:ListDuo,'visual')<CR>
+vmap <A-;><A-;> x:call DeleteContents(g:ListSma,'visual')<CR>
 
 " {3}. "Remove encaps leaving contents intact."
-nmap `)) :call EraseEncaps(g:ListBra,'normal')<CR>
-nmap `>> :call EraseEncaps(g:ListSha,'normal')<CR>
-nmap `}} :call EraseEncaps(g:ListCur,'normal')<CR>
-nmap `]] :call EraseEncaps(g:ListRec,'normal')<CR>
-nmap `"" :call EraseEncaps(g:ListDuo,'normal')<CR>
-nmap `'' :call EraseEncaps(g:ListSma,'normal')<CR>
+nmap <A-)><A-)> :call EraseEncaps(g:ListBra,'normal')<CR>
+nmap <A->><A->> :call EraseEncaps(g:ListSha,'normal')<CR>
+nmap <A-}><A-}> :call EraseEncaps(g:ListCur,'normal')<CR>
+nmap <A-]><A-]> :call EraseEncaps(g:ListRec,'normal')<CR>
+nmap <A-"><A-"> :call EraseEncaps(g:ListDuo,'normal')<CR>
+nmap <A-'><A-'> :call EraseEncaps(g:ListSma,'normal')<CR>
        
-vmap `)) :call EraseEncaps(g:ListBra,'visual')<CR>
-vmap `>> :call EraseEncaps(g:ListSha,'visual')<CR>
-vmap `}} :call EraseEncaps(g:ListCur,'visual')<CR>
-vmap `]] :call EraseEncaps(g:ListRec,'visual')<CR>
-vmap `"" :call EraseEncaps(g:ListDuo,'visual')<CR>
-vmap `'' :call EraseEncaps(g:ListSma,'visual')<CR>
+vmap <A-)><A-)> :call EraseEncaps(g:ListBra,'visual')<CR>
+vmap <A->><A->> :call EraseEncaps(g:ListSha,'visual')<CR>
+vmap <A-}><A-}> :call EraseEncaps(g:ListCur,'visual')<CR>
+vmap <A-]><A-]> :call EraseEncaps(g:ListRec,'visual')<CR>
+vmap <A-"><A-"> :call EraseEncaps(g:ListDuo,'visual')<CR>
+vmap <A-'><A-'> :call EraseEncaps(g:ListSma,'visual')<CR>
+
+
 
 fun SetForSnippets()
 	vmap <A-]><A-[> :call WordsSnippetsV()<CR>
